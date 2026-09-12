@@ -79,7 +79,12 @@
   .stage{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;
          padding:1rem;-webkit-overflow-scrolling:touch}
   .stage img{max-width:100%;height:auto;background:var(--sheet);
-             box-shadow:0 2px 18px rgba(0,0,0,.45);border-radius:2px}
+             box-shadow:0 2px 18px rgba(0,0,0,.45);border-radius:2px;
+             transition:opacity .2s}
+  .stage img.loading{opacity:.25;min-height:70vh}
+  .spin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+        color:#9FB0BA;font-size:.9rem;pointer-events:none}
+  .stage{position:relative}
   .thumbs{display:flex;gap:.4rem;overflow-x:auto;padding:.5rem .8rem;background:#0F1A21;flex:none}
   .thumbs button{flex:none;width:44px;height:56px;border:1px solid #2C3D47;border-radius:3px;
                  background:#16242E;color:#9FB0BA;font-size:.78rem;cursor:pointer}
@@ -179,9 +184,26 @@ function snips(r,term){
 const reader=document.getElementById("reader"), stage=document.getElementById("stage"),
       thumbs=document.getElementById("thumbs"), folio=document.getElementById("folio");
 
+const cache=new Map();
+function preload(r,i){
+  if(i<0||i>=r.imgs.length) return;
+  const src="pages/"+r.imgs[i];
+  if(cache.has(src)) return;
+  const im=new Image(); im.decoding="async"; im.src=src; cache.set(src,im);
+}
 function show(){
-  const r=view;
-  stage.innerHTML=`<img src="pages/${r.imgs[pg]}" alt="${esc(r.when)}, page ${pg+1}">`;
+  const r=view, src="pages/"+r.imgs[pg];
+  const ready=cache.has(src)&&cache.get(src).complete;
+  stage.innerHTML=`<img id="pageimg" class="${ready?"":"loading"}" src="${src}"
+     decoding="async" alt="${esc(r.when)}, page ${pg+1}">`+
+     (ready?"":'<span class="spin" id="spin">Loading page…</span>');
+  const im=document.getElementById("pageimg");
+  im.onload=()=>{
+    im.classList.remove("loading");
+    const sp=document.getElementById("spin"); if(sp) sp.remove();
+    preload(r,pg+1); preload(r,pg+2); preload(r,pg-1);
+  };
+  if(ready){preload(r,pg+1);preload(r,pg+2);preload(r,pg-1);}
   stage.scrollTop=0;
   folio.textContent=`${pg+1} of ${r.imgs.length}`;
   document.getElementById("prev").disabled = pg===0;
@@ -195,7 +217,7 @@ function open(r,page){
   thumbs.innerHTML=r.imgs.map((_,i)=>`<button aria-current="false">${i+1}</button>`).join("");
   [...thumbs.children].forEach((b,i)=>b.onclick=()=>{pg=i;show()});
   reader.classList.add("open"); document.body.classList.add("reading");
-  show(); document.getElementById("close").focus();
+  show(); preload(r,pg+1); preload(r,pg+2); document.getElementById("close").focus();
 }
 function close(){reader.classList.remove("open");document.body.classList.remove("reading");view=null}
 document.getElementById("close").onclick=close;
