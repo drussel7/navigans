@@ -217,7 +217,9 @@ function open(r,page){
   thumbs.innerHTML=r.imgs.map((_,i)=>`<button aria-current="false">${i+1}</button>`).join("");
   [...thumbs.children].forEach((b,i)=>b.onclick=()=>{pg=i;show()});
   reader.classList.add("open"); document.body.classList.add("reading");
-  show(); preload(r,pg+1); preload(r,pg+2); document.getElementById("close").focus();
+  show();
+  // an issue is only a handful of pages - fetch the lot so turning is instant
+  r.imgs.forEach((_,i)=>preload(r,i)); document.getElementById("close").focus();
 }
 function close(){reader.classList.remove("open");document.body.classList.remove("reading");view=null}
 document.getElementById("close").onclick=close;
@@ -296,8 +298,11 @@ function paint(){
       b.setAttribute("aria-expanded",String(d.classList.toggle("open")))};
   });
   list.querySelectorAll("[data-open]").forEach(b=>{
+    const h=hits[+b.dataset.open];
+    const warm=()=>preload(h.r,(h.s[0]?h.s[0].page-1:0));
+    b.addEventListener("pointerenter",warm,{once:true});
+    b.addEventListener("touchstart",warm,{once:true,passive:true});
     b.onclick=e=>{e.stopPropagation();
-      const h=hits[+b.dataset.open];
       open(h.r,(h.s[0]?h.s[0].page-1:0))};
   });
 }
