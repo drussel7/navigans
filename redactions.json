@@ -1,0 +1,9 @@
+[
+  {
+    "file": "MSC-NL-1957-05.pdf",
+    "page": 1,
+    "boxes": [[0.28, 0.5005, 0.49, 0.0135]],
+    "remove": ["Room 422, Marconi House, Chelmsford, Essex"],
+    "reason": "worked example - club office address, 1957"
+  }
+]
