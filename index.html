@@ -101,6 +101,12 @@
   footer{margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid var(--rule);
          font-size:.84rem;color:var(--ink-soft)}
   footer p{margin:.35rem 0}
+  .save{font:inherit;font-size:.88rem;color:var(--ink);background:var(--sheet);
+        border:1px solid var(--rule);border-radius:4px;min-height:38px;
+        padding:0 .85rem;cursor:pointer}
+  .save:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+  .save[disabled]{opacity:.5;cursor:default}
+  #savemsg{font-size:.84rem;margin-left:.5rem}
   @media (prefers-reduced-motion:no-preference){
     .detail.open{animation:drop .18s ease-out}
     @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
@@ -127,6 +133,8 @@
   <ol id="list"></ol>
 
   <footer>
+    <p id="offline"><button class="save" id="save">Save the archive to this device</button>
+       <span id="savemsg"></span></p>
     <p>Scanned at 300&nbsp;dpi from the club's bound set and read by optical character recognition.</p>
     <p>Recognition is good but not perfect on sixty-year-old typescript, so an occasional word is misread.</p>
   </footer>
@@ -198,12 +206,17 @@ function show(){
      decoding="async" alt="${esc(r.when)}, page ${pg+1}">`+
      (ready?"":'<span class="spin" id="spin">Loading page…</span>');
   const im=document.getElementById("pageimg");
+  const rest=()=>{
+    // nearest pages first, then the remainder of the issue
+    preload(r,pg+1); preload(r,pg-1); preload(r,pg+2);
+    setTimeout(()=>r.imgs.forEach((_,i)=>preload(r,i)),400);
+  };
   im.onload=()=>{
     im.classList.remove("loading");
     const sp=document.getElementById("spin"); if(sp) sp.remove();
-    preload(r,pg+1); preload(r,pg+2); preload(r,pg-1);
+    rest();
   };
-  if(ready){preload(r,pg+1);preload(r,pg+2);preload(r,pg-1);}
+  if(ready) rest();
   stage.scrollTop=0;
   folio.textContent=`${pg+1} of ${r.imgs.length}`;
   document.getElementById("prev").disabled = pg===0;
@@ -217,9 +230,7 @@ function open(r,page){
   thumbs.innerHTML=r.imgs.map((_,i)=>`<button aria-current="false">${i+1}</button>`).join("");
   [...thumbs.children].forEach((b,i)=>b.onclick=()=>{pg=i;show()});
   reader.classList.add("open"); document.body.classList.add("reading");
-  show();
-  // an issue is only a handful of pages - fetch the lot so turning is instant
-  r.imgs.forEach((_,i)=>preload(r,i)); document.getElementById("close").focus();
+  show();   // show() preloads the rest once this page has arrived document.getElementById("close").focus();
 }
 function close(){reader.classList.remove("open");document.body.classList.remove("reading");view=null}
 document.getElementById("close").onclick=close;
@@ -305,6 +316,30 @@ function paint(){
     b.onclick=e=>{e.stopPropagation();
       open(h.r,(h.s[0]?h.s[0].page-1:0))};
   });
+}
+
+/* ---- offline caching ---------------------------------------------- */
+const msg=document.getElementById("savemsg"), saveBtn=document.getElementById("save");
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js?v=20260913-080607").catch(()=>{
+    document.getElementById("offline").style.display="none";
+  });
+  navigator.serviceWorker.addEventListener("message",e=>{
+    const {done,total}=e.data||{};
+    if(!total) return;
+    msg.textContent = done<total ? `saving ${done} of ${total} pages…`
+                                 : "saved — the archive now works offline";
+    if(done===total) saveBtn.disabled=false, saveBtn.textContent="Saved to this device";
+  });
+  saveBtn.onclick=()=>{
+    if(!navigator.serviceWorker.controller){
+      msg.textContent="reload the page once, then try again"; return;
+    }
+    saveBtn.disabled=true; msg.textContent="starting…";
+    navigator.serviceWorker.controller.postMessage("cache-all");
+  };
+}else{
+  document.getElementById("offline").style.display="none";
 }
 
 document.getElementById("q").addEventListener("input",e=>{q=e.target.value;paint()});
