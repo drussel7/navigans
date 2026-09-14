@@ -85,6 +85,14 @@
   .spin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
         color:#9FB0BA;font-size:.9rem;pointer-events:none}
   .stage{position:relative}
+  .endpanel{width:100%;max-width:640px;margin:1.1rem auto 0;padding:1rem 1.1rem;
+    background:#16242E;border:1px solid #2C3D47;border-radius:4px;text-align:center}
+  .endpanel p{margin:0 0 .7rem;color:#9FB0BA;font-size:.9rem}
+  .endpanel button{font:inherit;font-size:.97rem;min-height:44px;padding:0 1.2rem;
+    background:var(--stock);color:var(--ink);border:0;border-radius:4px;cursor:pointer}
+  .endpanel button:focus-visible{outline:2px solid var(--violet-wash);outline-offset:2px}
+  .endpanel .last{color:#6F818C;font-size:.88rem}
+  .stage{flex-direction:column}
   .thumbs{display:flex;gap:.4rem;overflow-x:auto;padding:.5rem .8rem;background:#0F1A21;flex:none}
   .thumbs button{flex:none;width:44px;height:56px;border:1px solid #2C3D47;border-radius:3px;
                  background:#16242E;color:#9FB0BA;font-size:.78rem;cursor:pointer}
@@ -159,7 +167,7 @@ R.forEach(r=>{
   r.body=r.pages.map(p=>p.toLowerCase());
 });
 const YEARS=[...new Set(R.map(r=>r.year))].sort();
-let year=null,q="",view=null,pg=0;
+let year=null,q="",view=null,pg=0,order=[],vi=-1;
 
 document.getElementById("tally").textContent =
   R.length+" issues · "+YEARS[0]+"–"+YEARS[YEARS.length-1]+" · "+
@@ -223,8 +231,20 @@ function show(){
   document.getElementById("next").disabled = pg===r.imgs.length-1;
   [...thumbs.children].forEach((b,i)=>b.setAttribute("aria-current",String(i===pg)));
   const t=thumbs.children[pg]; if(t) t.scrollIntoView({block:"nearest",inline:"nearest"});
+
+  if(pg===r.imgs.length-1){
+    const nxt=order[vi+1];
+    const box=document.createElement("div");
+    box.className="endpanel";
+    box.innerHTML=`<p>End of ${esc(r.when)}</p>`+
+      (nxt?`<button id="nextissue">Read ${esc(nxt.when)} &#8594;</button>`
+         :`<p class="last">Nothing further in this view.</p>`);
+    stage.appendChild(box);
+    if(nxt) document.getElementById("nextissue").onclick=()=>open(vi+1,0);
+  }
 }
-function open(r,page){
+function open(i,page){
+  vi=i; const r=order[i];
   view=r; pg=page||0;
   document.getElementById("rtitle").textContent=r.when+" — issue "+r.no;
   thumbs.innerHTML=r.imgs.map((_,i)=>`<button aria-current="false">${i+1}</button>`).join("");
@@ -239,8 +259,8 @@ document.getElementById("next").onclick=()=>{if(pg<view.imgs.length-1){pg++;show
 addEventListener("keydown",e=>{
   if(!view) return;
   if(e.key==="Escape") close();
-  if(e.key==="ArrowLeft"&&pg>0){pg--;show()}
-  if(e.key==="ArrowRight"&&pg<view.imgs.length-1){pg++;show()}
+  if(e.key==="ArrowLeft"){ if(pg>0){pg--;show()} else if(vi>0) open(vi-1,order[vi-1].imgs.length-1) }
+  if(e.key==="ArrowRight"){ if(pg<view.imgs.length-1){pg++;show()} else if(order[vi+1]) open(vi+1,0) }
 });
 let x0=null;
 stage.addEventListener("touchstart",e=>{x0=e.changedTouches[0].clientX},{passive:true});
@@ -248,8 +268,8 @@ stage.addEventListener("touchend",e=>{
   if(x0===null||!view) return;
   const dx=e.changedTouches[0].clientX-x0; x0=null;
   if(Math.abs(dx)<55) return;
-  if(dx<0&&pg<view.imgs.length-1){pg++;show()}
-  if(dx>0&&pg>0){pg--;show()}
+  if(dx<0){ if(pg<view.imgs.length-1){pg++;show()} else if(order[vi+1]) open(vi+1,0) }
+  if(dx>0){ if(pg>0){pg--;show()} else if(vi>0) open(vi-1,order[vi-1].imgs.length-1) }
 },{passive:true});
 
 /* ---- list --------------------------------------------------------- */
@@ -263,6 +283,7 @@ function paint(){
     const s=snips(r,term);
     if(r.hay.includes(term)||s.length) hits.push({r,s});
   });
+  order=hits.map(h=>h.r);
   [...yrBox.children].forEach(b=>b.setAttribute("aria-pressed",String(+b.textContent===year)));
   document.getElementById("clear").classList.toggle("on",q.length>0);
 
@@ -314,14 +335,14 @@ function paint(){
     b.addEventListener("pointerenter",warm,{once:true});
     b.addEventListener("touchstart",warm,{once:true,passive:true});
     b.onclick=e=>{e.stopPropagation();
-      open(h.r,(h.s[0]?h.s[0].page-1:0))};
+      open(+b.dataset.open,(h.s[0]?h.s[0].page-1:0))};
   });
 }
 
 /* ---- offline caching ---------------------------------------------- */
 const msg=document.getElementById("savemsg"), saveBtn=document.getElementById("save");
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js?v=20260914-101315").catch(()=>{
+  navigator.serviceWorker.register("sw.js?v=20260914-101901").catch(()=>{
     document.getElementById("offline").style.display="none";
   });
   navigator.serviceWorker.addEventListener("message",e=>{
