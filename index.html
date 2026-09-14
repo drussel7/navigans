@@ -76,6 +76,16 @@
   .bar button:disabled{opacity:.32;cursor:default}
   .bar button:focus-visible{outline:2px solid var(--violet-wash)}
   .folio{font-size:.86rem;color:#9FB0BA;min-width:5.4rem;text-align:center}
+  .nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;
+       width:52px;height:72px;border:0;border-radius:6px;cursor:pointer;
+       background:rgba(15,26,33,.62);color:var(--stock);font-size:1.7rem;
+       line-height:1;display:flex;align-items:center;justify-content:center;
+       transition:background .15s,opacity .15s}
+  .nav:hover{background:rgba(15,26,33,.85)}
+  .nav:focus-visible{outline:2px solid var(--violet-wash);outline-offset:2px}
+  .nav[disabled]{opacity:.18;cursor:default}
+  .nav.l{left:.4rem} .nav.r{right:.4rem}
+  @media (max-width:520px){ .nav{width:40px;height:60px;font-size:1.4rem} }
   .stage{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;
          justify-content:flex-start;padding:1rem;position:relative;
          overflow-anchor:none;-webkit-overflow-scrolling:touch}
@@ -151,11 +161,11 @@
   <div class="bar">
     <button id="close" aria-label="Close reader">&times;</button>
     <span class="title" id="rtitle"></span>
-    <button id="prev" aria-label="Previous page">&#8249;</button>
     <span class="folio" id="folio"></span>
-    <button id="next" aria-label="Next page">&#8250;</button>
   </div>
   <div class="stage" id="stage"></div>
+  <button class="nav l" id="prev" aria-label="Previous page">&#8249;</button>
+  <button class="nav r" id="next" aria-label="Next page">&#8250;</button>
   <div class="thumbs" id="thumbs"></div>
 </div>
 
@@ -238,8 +248,8 @@ function show(){
   if(ready) rest();
   stage.scrollTop=0;
   folio.textContent=`${pg+1} of ${r.imgs.length}`;
-  document.getElementById("prev").disabled = pg===0;
-  document.getElementById("next").disabled = pg===r.imgs.length-1;
+  document.getElementById("prev").disabled = (pg===0 && vi===0);
+  document.getElementById("next").disabled = (pg===r.imgs.length-1 && vi===order.length-1);
   [...thumbs.children].forEach((b,i)=>b.setAttribute("aria-current",String(i===pg)));
   const t=thumbs.children[pg];
   if(t){                       // scroll the strip itself; scrollIntoView also
@@ -277,8 +287,12 @@ function open(i,page){
 }
 function close(){reader.classList.remove("open");document.body.classList.remove("reading");view=null}
 document.getElementById("close").onclick=close;
-document.getElementById("prev").onclick=()=>{if(pg>0){pg--;show()}};
-document.getElementById("next").onclick=()=>{if(pg<view.imgs.length-1){pg++;show()}};
+document.getElementById("prev").onclick=()=>{
+  if(pg>0){pg--;show()} else if(vi>0) open(vi-1,order[vi-1].imgs.length-1);
+};
+document.getElementById("next").onclick=()=>{
+  if(pg<view.imgs.length-1){pg++;show()} else if(order[vi+1]) open(vi+1,0);
+};
 addEventListener("keydown",e=>{
   if(!view) return;
   if(e.key==="Escape") close();
@@ -365,7 +379,7 @@ function paint(){
 /* ---- offline caching ---------------------------------------------- */
 const msg=document.getElementById("savemsg"), saveBtn=document.getElementById("save");
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js?v=20260914-205642").catch(()=>{
+  navigator.serviceWorker.register("sw.js?v=20260914-210650").catch(()=>{
     document.getElementById("offline").style.display="none";
   });
   navigator.serviceWorker.addEventListener("message",e=>{
