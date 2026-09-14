@@ -76,17 +76,15 @@
   .bar button:disabled{opacity:.32;cursor:default}
   .bar button:focus-visible{outline:2px solid var(--violet-wash)}
   .folio{font-size:.86rem;color:#9FB0BA;min-width:5.4rem;text-align:center}
-  .stage{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;
-         padding:1rem;-webkit-overflow-scrolling:touch}
+  .stage{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;
+         justify-content:flex-start;padding:1rem;position:relative;
+         overflow-anchor:none;-webkit-overflow-scrolling:touch}
   .stage img{max-width:100%;height:auto;background:var(--sheet);
              box-shadow:0 2px 18px rgba(0,0,0,.45);border-radius:2px;
-             transition:opacity .2s;cursor:zoom-in}
-  .stage img.fit{max-height:calc(100vh - 190px);width:auto;object-fit:contain}
-  .stage img.zoom{cursor:zoom-out}
+             transition:opacity .2s}
   .stage img.loading{opacity:.25;min-height:70vh}
   .spin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
         color:#9FB0BA;font-size:.9rem;pointer-events:none}
-  .stage{position:relative}
   .endpanel{width:100%;max-width:640px;margin:1.1rem auto 0;padding:1rem 1.1rem;
     background:#16242E;border:1px solid #2C3D47;border-radius:4px;text-align:center}
   .endpanel p{margin:0 0 .7rem;color:#9FB0BA;font-size:.9rem}
@@ -94,7 +92,6 @@
     background:var(--stock);color:var(--ink);border:0;border-radius:4px;cursor:pointer}
   .endpanel button:focus-visible{outline:2px solid var(--violet-wash);outline-offset:2px}
   .endpanel .last{color:#6F818C;font-size:.88rem}
-  .stage{flex-direction:column}
   .thumbs{display:flex;gap:.4rem;overflow-x:auto;padding:.5rem .8rem;background:#0F1A21;flex:none}
   .thumbs button{flex:none;width:44px;height:56px;border:1px solid #2C3D47;border-radius:3px;
                  background:#16242E;color:#9FB0BA;font-size:.78rem;cursor:pointer}
@@ -212,15 +209,10 @@ function preload(r,i){
 function show(){
   const r=view, src="pages/"+r.imgs[pg];
   const ready=cache.has(src)&&cache.get(src).complete;
-  stage.innerHTML=`<img id="pageimg" class="fit ${ready?"":"loading"}" src="${src}"
+  stage.innerHTML=`<img id="pageimg" class="${ready?"":"loading"}" src="${src}"
      decoding="async" alt="${esc(r.when)}, page ${pg+1}">`+
      (ready?"":'<span class="spin" id="spin">Loading page…</span>');
   const im=document.getElementById("pageimg");
-  im.onclick=()=>{
-    const zoomed=im.classList.toggle("fit")===false;
-    im.classList.toggle("zoom",zoomed);
-    if(!zoomed) stage.scrollTop=0;
-  };
   const rest=()=>{
     // nearest pages first, then the remainder of the issue, and finally
     // the way in and out of the issues either side, so moving on is instant
@@ -235,6 +227,7 @@ function show(){
   im.onload=()=>{
     im.classList.remove("loading");
     const sp=document.getElementById("spin"); if(sp) sp.remove();
+    stage.scrollTop=0;          // the image only sizes now, so re-pin the top
     rest();
   };
   if(ready) rest();
@@ -362,7 +355,7 @@ function paint(){
 /* ---- offline caching ---------------------------------------------- */
 const msg=document.getElementById("savemsg"), saveBtn=document.getElementById("save");
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js?v=20260914-102927").catch(()=>{
+  navigator.serviceWorker.register("sw.js?v=20260914-103425").catch(()=>{
     document.getElementById("offline").style.display="none";
   });
   navigator.serviceWorker.addEventListener("message",e=>{
