@@ -207,7 +207,7 @@ function preload(r,i){
   const im=new Image(); im.decoding="async"; im.src=src; cache.set(src,im);
 }
 function show(){
-  const r=view, src="pages/"+r.imgs[pg];
+  const r=view, src="pages/"+r.imgs[pg], shown=pg;
   const ready=cache.has(src)&&cache.get(src).complete;
   stage.innerHTML=`<img id="pageimg" class="${ready?"":"loading"}" src="${src}"
      decoding="async" alt="${esc(r.when)}, page ${pg+1}">`+
@@ -224,19 +224,29 @@ function show(){
       if(pv){ preload(pv,pv.imgs.length-1); preload(pv,0); }
     },1800);
   };
+  const toTop=()=>{
+    stage.scrollTop=0;
+    requestAnimationFrame(()=>{stage.scrollTop=0});
+  };
   im.onload=()=>{
     im.classList.remove("loading");
     const sp=document.getElementById("spin"); if(sp) sp.remove();
-    stage.scrollTop=0;          // the image only sizes now, so re-pin the top
+    toTop();                    // the image only sizes now, so re-pin the top
     rest();
   };
+  if(im.complete) toTop();      // a cached image may never fire onload
   if(ready) rest();
   stage.scrollTop=0;
   folio.textContent=`${pg+1} of ${r.imgs.length}`;
   document.getElementById("prev").disabled = pg===0;
   document.getElementById("next").disabled = pg===r.imgs.length-1;
   [...thumbs.children].forEach((b,i)=>b.setAttribute("aria-current",String(i===pg)));
-  const t=thumbs.children[pg]; if(t) t.scrollIntoView({block:"nearest",inline:"nearest"});
+  const t=thumbs.children[pg];
+  if(t){                       // scroll the strip itself; scrollIntoView also
+    const l=t.offsetLeft, r=l+t.offsetWidth;   // drags the page area on iOS
+    if(l < thumbs.scrollLeft)                       thumbs.scrollLeft = l - 8;
+    else if(r > thumbs.scrollLeft+thumbs.clientWidth) thumbs.scrollLeft = r - thumbs.clientWidth + 8;
+  }
 
   const prv=order[vi-1], nxt=order[vi+1];
   if(pg===0 && prv){
@@ -355,7 +365,7 @@ function paint(){
 /* ---- offline caching ---------------------------------------------- */
 const msg=document.getElementById("savemsg"), saveBtn=document.getElementById("save");
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js?v=20260914-103425").catch(()=>{
+  navigator.serviceWorker.register("sw.js?v=20260914-103838").catch(()=>{
     document.getElementById("offline").style.display="none";
   });
   navigator.serviceWorker.addEventListener("message",e=>{
