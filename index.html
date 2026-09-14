@@ -215,9 +215,15 @@ function show(){
      (ready?"":'<span class="spin" id="spin">Loading page…</span>');
   const im=document.getElementById("pageimg");
   const rest=()=>{
-    // nearest pages first, then the remainder of the issue
+    // nearest pages first, then the remainder of the issue, and finally
+    // the way in and out of the issues either side, so moving on is instant
     preload(r,pg+1); preload(r,pg-1); preload(r,pg+2);
     setTimeout(()=>r.imgs.forEach((_,i)=>preload(r,i)),400);
+    setTimeout(()=>{
+      const nx=order[vi+1], pv=order[vi-1];
+      if(nx){ preload(nx,0); preload(nx,1); }
+      if(pv){ preload(pv,pv.imgs.length-1); preload(pv,0); }
+    },1800);
   };
   im.onload=()=>{
     im.classList.remove("loading");
@@ -342,7 +348,7 @@ function paint(){
 /* ---- offline caching ---------------------------------------------- */
 const msg=document.getElementById("savemsg"), saveBtn=document.getElementById("save");
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js?v=20260914-101901").catch(()=>{
+  navigator.serviceWorker.register("sw.js?v=20260914-102422").catch(()=>{
     document.getElementById("offline").style.display="none";
   });
   navigator.serviceWorker.addEventListener("message",e=>{
