@@ -80,7 +80,9 @@
          padding:1rem;-webkit-overflow-scrolling:touch}
   .stage img{max-width:100%;height:auto;background:var(--sheet);
              box-shadow:0 2px 18px rgba(0,0,0,.45);border-radius:2px;
-             transition:opacity .2s}
+             transition:opacity .2s;cursor:zoom-in}
+  .stage img.fit{max-height:calc(100vh - 190px);width:auto;object-fit:contain}
+  .stage img.zoom{cursor:zoom-out}
   .stage img.loading{opacity:.25;min-height:70vh}
   .spin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
         color:#9FB0BA;font-size:.9rem;pointer-events:none}
@@ -210,10 +212,15 @@ function preload(r,i){
 function show(){
   const r=view, src="pages/"+r.imgs[pg];
   const ready=cache.has(src)&&cache.get(src).complete;
-  stage.innerHTML=`<img id="pageimg" class="${ready?"":"loading"}" src="${src}"
+  stage.innerHTML=`<img id="pageimg" class="fit ${ready?"":"loading"}" src="${src}"
      decoding="async" alt="${esc(r.when)}, page ${pg+1}">`+
      (ready?"":'<span class="spin" id="spin">Loading page…</span>');
   const im=document.getElementById("pageimg");
+  im.onclick=()=>{
+    const zoomed=im.classList.toggle("fit")===false;
+    im.classList.toggle("zoom",zoomed);
+    if(!zoomed) stage.scrollTop=0;
+  };
   const rest=()=>{
     // nearest pages first, then the remainder of the issue, and finally
     // the way in and out of the issues either side, so moving on is instant
@@ -238,8 +245,15 @@ function show(){
   [...thumbs.children].forEach((b,i)=>b.setAttribute("aria-current",String(i===pg)));
   const t=thumbs.children[pg]; if(t) t.scrollIntoView({block:"nearest",inline:"nearest"});
 
+  const prv=order[vi-1], nxt=order[vi+1];
+  if(pg===0 && prv){
+    const box=document.createElement("div");
+    box.className="endpanel";
+    box.innerHTML=`<button id="previssue">&#8592; Read ${esc(prv.when)}</button>`;
+    stage.appendChild(box);
+    document.getElementById("previssue").onclick=()=>open(vi-1,0);
+  }
   if(pg===r.imgs.length-1){
-    const nxt=order[vi+1];
     const box=document.createElement("div");
     box.className="endpanel";
     box.innerHTML=`<p>End of ${esc(r.when)}</p>`+
@@ -348,7 +362,7 @@ function paint(){
 /* ---- offline caching ---------------------------------------------- */
 const msg=document.getElementById("savemsg"), saveBtn=document.getElementById("save");
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js?v=20260914-102422").catch(()=>{
+  navigator.serviceWorker.register("sw.js?v=20260914-102927").catch(()=>{
     document.getElementById("offline").style.display="none";
   });
   navigator.serviceWorker.addEventListener("message",e=>{
