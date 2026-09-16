@@ -379,7 +379,7 @@ function paint(){
 /* ---- offline caching ---------------------------------------------- */
 const msg=document.getElementById("savemsg"), saveBtn=document.getElementById("save");
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js?v=20260916-092354").catch(()=>{
+  navigator.serviceWorker.register("sw.js?v=20260916-093212").catch(()=>{
     document.getElementById("offline").style.display="none";
   });
   navigator.serviceWorker.addEventListener("message",e=>{
